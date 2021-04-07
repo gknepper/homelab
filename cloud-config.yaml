@@ -1,0 +1,62 @@
+#cloud-config
+chpasswd:
+    list: |
+      ubuntu:ubuntu
+    expire: false
+groups:
+  - docker
+users:
+  - default
+  - name: ubuntu
+    plain_text_passwd: 'ubuntu'
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: sudo, docker
+    shell: /bin/bash
+  - name: master
+    shell: /bin/bash
+    groups: wheel
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh-authorized-keys:
+      - ssh-rsa AAAABaEQ...PbQ== My Awesome Key
+packages:
+ - open-vm-tools
+write_files:
+  - path: /root/configure-netplan.sh
+    content: |
+        #!/bin/bash
+        vmtoolsd --cmd 'info-get guestinfo.ovfEnv' > /tmp/ovfenv
+        IPAddress=$(sed -n 's/.*Property oe:key="guestinfo.interface.0.ip.0.address" oe:value="\([^"]*\).*/\1/p' /tmp/ovfenv)
+        SubnetMask=$(sed -n 's/.*Property oe:key="guestinfo.interface.0.ip.0.netmask" oe:value="\([^"]*\).*/\1/p' /tmp/ovfenv)
+        Gateway=$(sed -n 's/.*Property oe:key="guestinfo.interface.0.route.0.gateway" oe:value="\([^"]*\).*/\1/p' /tmp/ovfenv)
+        DNS=$(sed -n 's/.*Property oe:key="guestinfo.dns.servers" oe:value="\([^"]*\).*/\1/p' /tmp/ovfenv)
+        
+        cat > /etc/netplan/01-netcfg.yaml <<EOF
+        network:
+          version: 2
+          renderer: networkd
+          ethernets:
+            ens192:
+              addresses: 
+                - $IPAddress/24
+              gateway4: $Gateway
+              dhcp6: no
+              accept-ra: no
+              nameservers:
+                addresses : [$DNS]
+        EOF
+        
+        sudo netplan apply
+        sleep 30
+        sudo systemctl start open-vm-tools
+        printf "%s" "waiting for tomato host ..."
+        while ! ping -c 1 -n -w 1 192.168.1.1 &> /dev/null
+        do
+          printf "%c" "."
+        done
+        printf "\n%s\n"  "Server is back online"
+        curl  "http://192.168.1.1:8080/dns.php?ip=${IPAddress}&hostname=${HOSTNAME}&fqdn=${HOSTNAME}.home"
+runcmd:
+  - bash /root/configure-netplan.sh
+bootcmd:
+  - [ cloud-init-per, once, rmdefaultnetconf, rm, -f, /etc/netplan/50-cloud-init.yaml ]
+  - [ cloud-init-per, once, tempstopvmtools, sudo, systemctl, stop, open-vm-tools ]
