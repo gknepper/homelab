@@ -8,8 +8,10 @@ https://desktop.docker.com/mac/stable/amd64/67351/Docker.dmg
 # Start Tanzu UI
 tanzu management-cluster create --ui
 
-# Test 
+# Commands  
 tanzu mc get
+tanzu cluster list
+tanzu cluster delete tanzu2 -n tkg-system
 
 # Tanzu get kubeconfig
 tanzu management-cluster kubeconfig get --admin --export-file tanzu-ubuntu.yaml
