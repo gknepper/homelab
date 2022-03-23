@@ -14,5 +14,10 @@ tanzu mc get
 # Tanzu get kubeconfig
 tanzu management-cluster kubeconfig get --admin --export-file tanzu-ubuntu.yaml
 
+
+# Run Tanzu manually
+tanzu management-cluster create tanzu2 --file /Users/macuser/.config/tanzu/tkg/clusterconfigs/v3tikd410n.yaml -v 6	
+
+
 # Federate Tanzu on Rancher
 curl --insecure -sfL https://rancher.home/v3/import/nhst8mshwg4c4vg4tc5k656q4hkbrs2wbjt4rrjmw5658bfq7qsbgd_c-m-kxsv62xm.yaml |  kubectl --kubeconfig tanzu-ubuntu.yaml apply -f 
